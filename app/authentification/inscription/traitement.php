@@ -37,8 +37,11 @@ if (!empty($erreurs)) {
 			$erreurs['erreur_base_de_donnees'] = $adresse_email_existe;
 			$message = $adresse_email_existe;
 		} else if ($ajouter_utilisateur) {
+			$erreurs = [];
 			$message = 'Inscription effectué avec succès. Veuillez consulter vos mails afin de valider votre inscription.';
 			// Mettre en place une fonction qui permet d'envoyer un mail de validation de compte.
+			$message_mail = 'Merci de vous êtes inscrit sur le site. Afin de valider votre inscription, veuillez cliquer sur le lien suivant : <a href="http://localhost:8080/index.php?ressource=valider-inscription&action=traitement&email=' . $_POST['email'] .'">Cliquer ici</a>.';
+			$envoyer_mail = envoyer_mail($_POST['email'], 'Validation d\'inscription', $message_mail);
 		} else {
 			$erreurs['erreur_base_de_donnees'] = 'Impossible de finaliser le processus d\'inscription. Merci de réessayer';
 			$message = 'Impossible de finaliser le processus d\'inscription. Merci de réessayer';

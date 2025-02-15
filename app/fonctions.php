@@ -1,5 +1,14 @@
 <?php
 
+//Import PHPMailer classes into the global namespace
+//These must be at the top of your script, not inside a function
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+
+//Load Composer's autoloader
+require 'vendor/autoload.php';
+
 /**
  * Router.
  *
@@ -10,23 +19,21 @@ function router(string $ressource, string $action)
 {
 	$page = 'app/authentification/connexion/formulaire.php';
 
-	if ($ressource == 'connexion' && $action == 'formulaire') {
-		$page = 'app/authentification/connexion/formulaire.php';
-	} elseif ($ressource == 'connexion' && $action == 'traitement') {
-		$page = 'app/authentification/connexion/traitement.php';
-	} else if ($ressource == 'inscription' && $action == 'formulaire') {
-		$page = 'app/authentification/inscription/formulaire.php';
-	} elseif ($ressource == 'inscription' && $action == 'traitement') {
-		$page = 'app/authentification/inscription/traitement.php';
-	} else if ($ressource == 'mot-de-passe-oublier' && $action == 'formulaire') {
-		$page = 'app/authentification/mot-de-passe-oublier/formulaire.php';
-	} elseif ($ressource == 'mot-de-passe-oublier' && $action == 'traitement') {
-		$page = 'app/authentification/mot-de-passe-oublier/traitement.php';
-	} else if ($ressource == 'reinitialiser-mot-de-passe' && $action == 'formulaire') {
-		$page = 'app/authentification/reinitialiser-mot-de-passe/formulaire.php';
-	} elseif ($ressource == 'reinitialiser-mot-de-passe' && $action == 'traitement') {
-		$page = 'app/authentification/reinitialiser-mot-de-passe/traitement.php';
+	if (!empty($ressource)) {
+		// Cas des pages d'authentification.
+		if (
+			($ressource == 'connexion' || $ressource == 'inscription' || $ressource == 'valider-inscription' || $ressource == 'mot-de-passe-oublier' || $ressource == 'reinitialiser-mot-de-passe')
+			&&
+			($action == 'formulaire' || $action == 'traitement')
+			&&
+			file_exists('app/authentification/' . $ressource . '/' . $action . '.php')
+		) {
+			$page = 'app/authentification/' . $ressource . '/' . $action . '.php';
+		} else {
+			$page = 'app/404.php';
+		}
 	}
+
 
 	include $page;
 }
@@ -100,4 +107,73 @@ function ajouter_utilisateur(string $email, string $mot_de_passe, string|null $n
 		'sexe' => $nom,
 		'date_de_naissance' => $date_de_naissance,
 	]);
+}
+
+/**
+ * Cette fonction permet d'envoyer un mail.
+ *
+ * @param string $to_email L'adresse email du destinataire.
+ * @param string $subject Le titre du mail.
+ * @param string $message Le corps du mail.
+ *
+ * @return bool Est-ce que le mail a pu être envoyé ou pas.
+ */
+function envoyer_mail(string $to_email = 'dossou.israel48@gmail.com', string $subject = 'Inscription', string $message = ''): bool
+{
+	//Create an instance; passing `true` enables exceptions
+	$mail = new PHPMailer(true);
+
+	try {
+		//Server settings
+		$mail->SMTPDebug = SMTP::DEBUG_SERVER;
+		$mail->isSMTP();
+		$mail->Host = 'smtp.gmail.com';
+		$mail->SMTPAuth = true;
+		$mail->Username = 'votre adresse gmail';
+		$mail->Password = 'le mot de passe de votre adresse gmail';
+		$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+		$mail->Port = 587;
+
+		//Recipients
+		$mail->setFrom('mesepreuvesafrica@gmail.com', 'TP CFP Authentification');
+		$mail->addAddress($to_email, 'Client');
+
+		//Content
+		$mail->isHTML(true);
+		$mail->Subject = $subject;
+		$mail->Body = $message;
+
+		$mail->send();
+		return true;
+	} catch (Exception $e) {
+		return false;
+	}
+}
+
+/**
+ * Cette fonction permet de récupérer les informations d'un utilisateur dans la base de donnees à partir de son adresse email (table utilisateur).
+ *
+ * @param string $email L'adresse email
+ * @return array Les informations sur l'utilisateur.
+ */
+function recuperer_utilisateur_a_partir_d_email(string $email): array
+{
+	$base_de_donnees = connexion_base_de_donnees();
+
+	if (is_string($base_de_donnees)) {
+		return [];
+	}
+
+	$requette = "SELECT * FROM utilisateurs WHERE email = :email";
+	$preparer_requette = $base_de_donnees->prepare($requette);
+	$preparer_requette->execute(['email' => $email]);
+	$utilisateur = $preparer_requette->fetch(PDO::FETCH_ASSOC);
+
+	if (is_array($utilisateur)) {
+		$verifier_existe = $utilisateur;
+	} else {
+		$verifier_existe = [];
+	}
+
+	return $verifier_existe;
 }
